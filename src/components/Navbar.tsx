@@ -15,6 +15,7 @@ export function Navbar() {
     { name: 'Architecture', path: '/architecture' },
     { name: 'Security', path: '/security' },
     { name: 'Blockchain', path: '/blockchain' },
+    { name: 'AI Features', path: '/ai-features' },
     { name: 'Developers', path: '/developers' },
     { name: 'About', path: '/about' },
   ];

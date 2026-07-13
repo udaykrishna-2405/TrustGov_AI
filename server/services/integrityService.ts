@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { ManagedBlockchainClient, GetNetworkCommand } from '@aws-sdk/client-managedblockchain';
 
 interface IntegrityRecordInput {
   userId: string;
@@ -14,7 +13,7 @@ interface FabricSubmitResponse {
   message?: string;
 }
 
-type VerificationMode = 'fabric-bridge' | 'amb-verify' | 'amb-fallback';
+type VerificationMode = 'fabric-bridge' | 'demo';
 
 interface IntegrityLogResult {
   hash: string;
@@ -23,40 +22,18 @@ interface IntegrityLogResult {
   blockchainVerified: boolean;
 }
 
-let ambCheckAttempted = false;
-let ambNetworkVerified = false;
-
 const isTrue = (value?: string) => (value || '').toLowerCase() === 'true';
 
 const getBlockchainMode = () => (process.env.BLOCKCHAIN_MODE || 'demo').toLowerCase();
 
-const maybeCheckAmbNetwork = async (): Promise<{ verified: boolean; reason?: string }> => {
-  const region = process.env.AWS_REGION;
-  const networkId = process.env.AMB_NETWORK_ID;
-
-  if (!region || !networkId) {
-    return { verified: false, reason: 'AWS_REGION or AMB_NETWORK_ID is missing.' };
-  }
-
-  if (ambCheckAttempted) {
-    return {
-      verified: ambNetworkVerified,
-      reason: ambNetworkVerified ? undefined : 'Previous AMB verification attempt failed.',
-    };
-  }
-
-  try {
-    ambCheckAttempted = true;
-    const client = new ManagedBlockchainClient({ region });
-    await client.send(new GetNetworkCommand({ NetworkId: networkId }));
-    ambNetworkVerified = true;
-    return { verified: true };
-  } catch (error) {
-    ambCheckAttempted = true;
-    ambNetworkVerified = false;
-    const message = error instanceof Error ? error.message : 'Unknown AMB error';
-    return { verified: false, reason: message };
-  }
+const generateDemoTxId = (hash: string): string => {
+  const shortHash = crypto
+    .createHash('sha256')
+    .update(hash + Date.now())
+    .digest('hex')
+    .slice(0, 16)
+    .toUpperCase();
+  return `DEMO-${shortHash}`;
 };
 
 const submitToFabricBridge = async (input: IntegrityRecordInput, hash: string): Promise<string | null> => {
@@ -106,14 +83,15 @@ export const logIntegrityRecord = async (input: IntegrityRecordInput): Promise<I
 
   const mode = getBlockchainMode();
   const fabricStrict = isTrue(process.env.FABRIC_BRIDGE_REQUIRED);
-  const ambStrict = isTrue(process.env.AMB_STRICT);
 
-  const shouldTryFabric = Boolean(process.env.FABRIC_SUBMIT_URL) || mode === 'fabric' || mode === 'fabric-bridge';
+  const shouldTryFabric =
+    Boolean(process.env.FABRIC_SUBMIT_URL) || mode === 'fabric' || mode === 'fabric-bridge';
 
   if (shouldTryFabric) {
     try {
       const fabricTxId = await submitToFabricBridge(input, hash);
       if (fabricTxId) {
+        console.log(`[Blockchain] mode: fabric-bridge | txId: ${fabricTxId}`);
         return {
           hash,
           blockchainTxId: fabricTxId,
@@ -126,28 +104,18 @@ export const logIntegrityRecord = async (input: IntegrityRecordInput): Promise<I
       if (fabricStrict || mode === 'fabric' || mode === 'fabric-bridge') {
         throw new Error(`[FABRIC] Submit failed in strict mode. ${message}`);
       }
-      console.warn(`[FABRIC] Submit failed, falling back to local reference. ${message}`);
+      console.warn(`[FABRIC] Submit failed, falling back to demo mode. ${message}`);
     }
   }
 
-  const ambStatus = await maybeCheckAmbNetwork();
-  if (!ambStatus.verified) {
-    if (ambStrict || mode === 'amb' || mode === 'amb-verify') {
-      throw new Error(`[AMB] Network verification failed. ${ambStatus.reason || ''}`.trim());
-    }
-    console.warn(`[AMB] Network check failed, continuing in demo integrity mode. ${ambStatus.reason || ''}`.trim());
-  }
-
-  // Fallback for hackathon/dev flow when Fabric submit endpoint is not configured.
-  const prefix = ambStatus.verified ? 'AMB-VERIFIED' : 'AMB';
-  const blockchainTxId = `${prefix}-${Date.now()}-${hash.slice(0, 12)}`;
-
-  const verificationMode: VerificationMode = ambStatus.verified ? 'amb-verify' : 'amb-fallback';
+  // Demo mode — always works, generates SHA-256 based txId locally
+  const blockchainTxId = generateDemoTxId(hash);
+  console.log(`[Blockchain] mode: demo | txId: ${blockchainTxId}`);
 
   return {
     hash,
     blockchainTxId,
-    verificationMode,
-    blockchainVerified: ambStatus.verified,
+    verificationMode: 'demo',
+    blockchainVerified: false,
   };
 };

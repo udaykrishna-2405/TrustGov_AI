@@ -18,6 +18,7 @@ import { DevelopersPage } from './pages/DevelopersPage';
 import { AboutPage } from './pages/AboutPage';
 import { BlockchainExplorer } from './pages/BlockchainExplorer';
 import { SecurityAlertBanner } from './components/SecurityAlertBanner';
+import { AIFeaturesPage } from './pages/AIFeaturesPage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
@@ -43,6 +44,7 @@ function AppContent() {
           <Route path="/blockchain" element={<BlockchainExplorer />} />
           <Route path="/developers" element={<DevelopersPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/ai-features" element={<AIFeaturesPage />} />
           <Route 
             path="/dashboard" 
             element={

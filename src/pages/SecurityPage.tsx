@@ -54,7 +54,7 @@ export function SecurityPage() {
             "bcrypt password hashing (cost 10)",
             "SHA-256 blockchain record fingerprinting",
             "HTTPS / TLS for all API traffic",
-            "AWS Managed Blockchain audit logs"
+            "Hyperledger Fabric blockchain audit logs"
           ]}
         />
 
@@ -76,7 +76,7 @@ export function SecurityPage() {
           description="To prevent administrative corruption or unauthorised record changes, cryptographic proofs of all government records are anchored to an immutable blockchain ledger."
           features={[
             "Tamper-proof audit logs",
-            "Distributed consensus via AWS AMB",
+            "Distributed consensus via Hyperledger Fabric",
             "Immutable record history",
             "Transparent on-chain verification"
           ]}

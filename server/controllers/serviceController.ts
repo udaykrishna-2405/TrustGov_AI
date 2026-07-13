@@ -159,6 +159,6 @@ export const getHealth = (_req: Request, res: Response) => {
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development',
     mongodb: process.env.MONGO_URI ? 'configured' : 'not-configured',
-    blockchain: process.env.AMB_NETWORK_ID ? 'amb-configured' : 'demo-integrity-mode',
+    blockchain: process.env.BLOCKCHAIN_MODE === 'fabric-bridge' ? 'fabric-bridge' : 'demo-integrity-mode',
   });
 };

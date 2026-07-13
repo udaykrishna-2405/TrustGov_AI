@@ -2,6 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/authRoutes';
 import serviceRoutes from './routes/serviceRoutes';
+import aiRoutes from './routes/aiRoutes';
 import gatewayRoutes from './gateway/routes/gatewayRoutes';
 import securitySimulationRoutes from './routes/securitySimulationRoutes';
 import { assertCriticalEnv } from './config/env';
@@ -26,6 +27,7 @@ app.use(requestLogger);
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/security', securitySimulationRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api', serviceRoutes);
 app.use('/api/gateway', gatewayRoutes);
 
