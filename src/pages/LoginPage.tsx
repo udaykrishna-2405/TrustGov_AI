@@ -1,35 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import AccountBlockedScreen, { type BlockedDetails } from '../components/AccountBlockedScreen';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle, Laptop, MapPin, Cpu, User, Phone } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, CheckCircle, AlertCircle, Laptop, MapPin, Cpu, Mail, Lock } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { buildRecaptchaVerifier, isFirebasePhoneAuthConfigured, normalizeFirebasePhone, startFirebasePhoneVerification } from '../lib/firebase';
-import type { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-type Step = 'login' | 'otp' | 'device' | 'token';
-type LoginMethod = 'userId' | 'phone';
-
-const allowDemoPhoneFallback = ((import.meta as any).env?.VITE_ALLOW_DEMO_PHONE_FALLBACK as string | undefined) === 'true';
-
-const getFirebaseErrorMessage = (error: unknown) => {
-  if (typeof error === 'object' && error && 'code' in error) {
-    const code = String((error as { code?: string }).code || '');
-
-    if (code === 'auth/invalid-phone-number') return 'Enter a valid phone number with country code support.';
-    if (code === 'auth/billing-not-enabled') return 'Firebase phone auth requires billing to be enabled on this Firebase project.';
-    if (code === 'auth/too-many-requests') return 'Too many OTP attempts. Please wait and try again.';
-    if (code === 'auth/quota-exceeded') return 'Firebase SMS quota exceeded. Try again later.';
-    if (code === 'auth/captcha-check-failed') return 'reCAPTCHA verification failed. Refresh the page and try again.';
-    if (code === 'auth/popup-blocked') return 'Browser blocked the verification flow. Allow popups and try again.';
-    if (code === 'auth/network-request-failed') return 'Firebase network request failed. Check your internet connection and try again.';
-    if (code === 'auth/operation-not-allowed') return 'Phone authentication is not enabled in Firebase.';
-  }
-
-  return error instanceof Error ? error.message : 'Unable to send OTP to your phone right now.';
-};
+type Step = 'login' | 'device' | 'token';
 
 const getBrowserName = () => {
   const ua = navigator.userAgent;
@@ -52,20 +30,15 @@ const getOperatingSystem = () => {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { sendOtp, verifyOtp, verifyFirebasePhone } = useAuth();
+  const { login } = useAuth();
 
   const defaultLocationLabel = 'Chennai, India';
 
   const [step, setStep] = useState<Step>('login');
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('userId');
-  const [identifier, setIdentifier] = useState('');
-  const [otp, setOtp] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [resolvedUserId, setResolvedUserId] = useState('TG-45821');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
   const [checks, setChecks] = useState({
     device: false,
     location: false,
@@ -92,86 +65,15 @@ export function LoginPage() {
       });
   }, []);
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      if (loginMethod === 'phone') {
-        if (!isFirebasePhoneAuthConfigured()) {
-          setError('Firebase phone authentication is not configured yet.');
-          return;
-        }
-
-        try {
-          const normalizedPhone = normalizeFirebasePhone(identifier.trim());
-          const verifier = recaptchaVerifier || buildRecaptchaVerifier('firebase-recaptcha-container');
-          if (!recaptchaVerifier) setRecaptchaVerifier(verifier);
-
-          const result = await startFirebasePhoneVerification(normalizedPhone, verifier);
-          setConfirmationResult(result);
-          setMessage(`OTP sent to ${normalizedPhone}.`);
-          setStep('otp');
-          return;
-        } catch (firebaseError) {
-          setConfirmationResult(null);
-
-          if (!allowDemoPhoneFallback) {
-            setError(getFirebaseErrorMessage(firebaseError));
-            return;
-          }
-        }
-
-        const fallbackRes = await sendOtp(loginMethod, identifier.trim());
-        if (fallbackRes.success) {
-          setMessage(fallbackRes.debugOtp ? `${fallbackRes.message} Demo OTP: ${fallbackRes.debugOtp}` : fallbackRes.message);
-          if (fallbackRes.userId) setResolvedUserId(fallbackRes.userId);
-          setStep('otp');
-          return;
-        }
-
-        setError(fallbackRes.message || 'Unable to send OTP. Please try again.');
-        return;
-      }
-
-      const res = await sendOtp(loginMethod, identifier.trim());
-      if (res.success) {
-        setMessage(res.message);
-        if (res.userId) setResolvedUserId(res.userId);
-        if (res.debugOtp) {
-          setMessage(`${res.message} Demo OTP: ${res.debugOtp}`);
-        }
-        setStep('otp');
-      } else {
-        setError(res.message);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const res = loginMethod === 'phone' && confirmationResult
-        ? await (async () => {
-            const credential = await confirmationResult.confirm(otp);
-            const idToken = await credential.user.getIdToken();
-            return verifyFirebasePhone(idToken);
-          })()
-        : await verifyOtp(loginMethod, identifier.trim(), otp);
+      const res = await login(email, password);
 
       if (res.success) {
-        if (res.user?.userId) {
-          setResolvedUserId(res.user.userId);
-        }
-
         setStep('device');
         setChecks({ device: false, location: false, session: false });
 
@@ -179,28 +81,21 @@ export function LoginPage() {
         setChecks((prev) => ({ ...prev, device: true }));
         await delay(500);
 
-        // ── Real IP + Location security check ──────────────────────────────
         try {
-          const secRes = await fetch('/api/auth/check-security', {
+          const secRes = await fetch('/api/security/check', {
             method: 'POST',
-            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
           });
-          const secData = await secRes.json();
-
-          if (secData.blocked) {
-            // Show the AccountBlockedScreen overlay immediately
-            setBlockedDetails(secData.blockedDetails as BlockedDetails);
-            setIsLoading(false);
-            return;
-          }
-
-          // Use geolocation-resolved location label when available
-          if (secData.location) {
-            setDetectedLocation(secData.location);
+          if (secRes.ok) {
+            const secData = await secRes.json();
+            if (secData.blocked) {
+              setBlockedDetails(secData.blockedDetails);
+              setIsLoading(false);
+              return;
+            }
           }
         } catch {
-          // Network error during security check – fail open (let user through)
+          // Ignore network errors in security check
         }
 
         setChecks((prev) => ({ ...prev, location: true }));
@@ -212,10 +107,10 @@ export function LoginPage() {
         await delay(1500);
         navigate('/dashboard');
       } else {
-        setError(res.message);
+        setError(res.message || 'Login failed');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed.');
+    } catch (err: any) {
+      setError(err.message || 'Connection failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -223,7 +118,6 @@ export function LoginPage() {
 
   return (
     <>
-      {/* ── Account blocked overlay ───────────────────────────────────────── */}
       {blockedDetails && (
         <AccountBlockedScreen
           details={blockedDetails}
@@ -251,14 +145,12 @@ export function LoginPage() {
 
           <h1 className="text-3xl font-bold text-text-main mb-3">
             {step === 'login' && 'Secure Login'}
-            {step === 'otp' && 'Identity Verification'}
             {step === 'device' && 'TrustGov Security Check'}
             {step === 'token' && 'Generating Secure Identity Token'}
           </h1>
 
           <p className="text-text-muted font-light">
-            {step === 'login' && 'Login using User ID or phone number and continue with OTP verification.'}
-            {step === 'otp' && (message || 'Enter OTP sent to your registered mobile number.')}
+            {step === 'login' && 'Login using your registered email and password.'}
             {step === 'device' && 'Verifying device, location, and session integrity.'}
             {step === 'token' && 'Creating your secure session access token.'}
           </p>
@@ -278,41 +170,30 @@ export function LoginPage() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
-                onSubmit={handleSendOtp}
+                onSubmit={handleLogin}
                 className="space-y-6"
               >
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod('userId')}
-                    className={`rounded-lg px-3 py-2 text-xs font-bold transition ${loginMethod === 'userId' ? 'bg-white text-text-main shadow-sm' : 'text-text-muted'}`}
-                  >
-                    User ID + OTP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod('phone')}
-                    className={`rounded-lg px-3 py-2 text-xs font-bold transition ${loginMethod === 'phone' ? 'bg-white text-text-main shadow-sm' : 'text-text-muted'}`}
-                  >
-                    Phone + OTP
-                  </button>
-                </div>
-
                 <div>
-                  <label className="section-label mb-2">{loginMethod === 'userId' ? 'TrustGov User ID' : 'Registered Phone Number'}</label>
-                  <div className="relative">
-                    {loginMethod === 'userId' ? (
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                    ) : (
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                    )}
+                  <div className="relative mb-4">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                     <input
-                      type="text"
+                      type="email"
                       required
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="input-field pl-12"
-                      placeholder={loginMethod === 'userId' ? 'TG-45821' : '+91XXXXXXXXXX'}
+                      placeholder="Email Address"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="input-field pl-12"
+                      placeholder="Password"
                     />
                   </div>
                 </div>
@@ -331,58 +212,10 @@ export function LoginPage() {
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>
-                      Send OTP
+                      Secure Login
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
-                </button>
-              </motion.form>
-            ) : step === 'otp' ? (
-              <motion.form
-                key="otp-form"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                onSubmit={handleVerifyOtp}
-                className="space-y-6"
-              >
-                <div>
-                  <label className="section-label mb-2">Enter OTP</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="000000"
-                    className="w-full bg-slate-50 border border-border rounded-xl py-4 text-center text-3xl font-bold tracking-[0.4em] text-text-main focus:outline-none focus:ring-4 focus:ring-brand/5 focus:border-brand focus:bg-white transition-all"
-                  />
-                  <p className="mt-4 text-[11px] text-text-muted text-center font-medium uppercase tracking-wider">
-                    {loginMethod === 'phone' ? 'OTP sent to your verified mobile number' : <>Demo OTP: <span className="text-brand">123456</span></>}
-                  </p>
-                </div>
-
-                {error && (
-                  <div className="flex items-center space-x-2 text-error text-xs bg-error/5 p-4 rounded-xl border border-error/10">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="btn-primary w-full py-4"
-                >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify Identity'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStep('login')}
-                  className="w-full text-sm font-bold text-text-muted hover:text-text-main transition-colors"
-                >
-                  Back to Login
                 </button>
               </motion.form>
             ) : step === 'device' ? (
@@ -446,8 +279,8 @@ export function LoginPage() {
                   <p className="text-[11px] uppercase tracking-wider font-bold text-success mb-4">Session Token Created</p>
                   <div className="space-y-3 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-text-muted">User ID</span>
-                      <span className="font-semibold text-text-main">{resolvedUserId}</span>
+                      <span className="text-text-muted">User Email</span>
+                      <span className="font-semibold text-text-main">{email}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-text-muted">Access Level</span>
@@ -468,7 +301,6 @@ export function LoginPage() {
           </AnimatePresence>
         </div>
       </motion.div>
-      <div id="firebase-recaptcha-container" />
       </div>
     </>
   );

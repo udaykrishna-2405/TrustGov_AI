@@ -1,14 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from './lib/utils';
 
-type LoginMethod = 'userId' | 'phone';
-
 interface AuthContextType {
   user: User | null;
-  register: (payload: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; message: string; userId?: string }>;
-  sendOtp: (loginMethod: LoginMethod, identifier: string) => Promise<{ success: boolean; message: string; userId?: string; debugOtp?: string }>;
-  verifyOtp: (loginMethod: LoginMethod, identifier: string, otp: string) => Promise<{ success: boolean; message: string; user?: User }>;
-  verifyFirebasePhone: (idToken: string) => Promise<{ success: boolean; message: string; user?: User }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  register: (payload: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -19,37 +15,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const getCurrentUser = async () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return null;
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user;
+  };
+
   const bootstrapSession = async () => {
     try {
-      let response = await fetch('/api/auth/me', { credentials: 'include' });
-      if (!response.ok) {
-        const refreshed = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (refreshed.ok) {
-          response = await fetch('/api/auth/me', { credentials: 'include' });
+      let currentUser = await getCurrentUser();
+      if (!currentUser) {
+        // Try refreshing
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (refreshToken) {
+          const refreshed = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+          if (refreshed.ok) {
+            const data = await refreshed.json();
+            localStorage.setItem('accessToken', data.accessToken);
+            currentUser = await getCurrentUser();
+          }
         }
       }
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.user) {
-          setUser(data.user);
-          localStorage.setItem('trustgov_user', JSON.stringify(data.user));
-          return;
-        }
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
       }
-
-      setUser(null);
-      localStorage.removeItem('trustgov_user');
     } catch (error) {
-      const savedUser = localStorage.getItem('trustgov_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
+      console.error('Session bootstrap failed:', error);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -59,69 +65,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bootstrapSession();
   }, []);
 
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, message: data.error || 'Login failed' };
+      }
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      setUser(data.user);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Login failed' };
+    }
+  };
+
   const register = async (payload: { name: string; email: string; phone: string; password: string }) => {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    return await res.json();
-  };
-
-  const sendOtp = async (loginMethod: LoginMethod, identifier: string) => {
-    const res = await fetch('/api/auth/send-otp', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loginMethod, identifier }),
-    });
-    return await res.json();
-  };
-
-  const verifyOtp = async (loginMethod: LoginMethod, identifier: string, otp: string) => {
-    const res = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loginMethod, identifier, otp }),
-    });
-
-    const data = await res.json();
-    if (data.success && data.user) {
-      setUser(data.user);
-      localStorage.setItem('trustgov_user', JSON.stringify(data.user));
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, message: data.error || 'Registration failed' };
+      }
+      return { success: true, message: data.message };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Registration failed' };
     }
-    return data;
-  };
-
-  const verifyFirebasePhone = async (idToken: string) => {
-    const res = await fetch('/api/auth/verify-firebase-phone', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
-    });
-
-    const data = await res.json();
-    if (data.success && data.user) {
-      setUser(data.user);
-      localStorage.setItem('trustgov_user', JSON.stringify(data.user));
-    }
-    return data;
   };
 
   const logout = async () => {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
+    const refreshToken = localStorage.getItem('refreshToken');
+    const token = localStorage.getItem('accessToken');
+    if (token && refreshToken) {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+    }
     setUser(null);
-    localStorage.removeItem('trustgov_user');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
   };
 
   return (
-    <AuthContext.Provider value={{ user, register, sendOtp, verifyOtp, verifyFirebasePhone, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

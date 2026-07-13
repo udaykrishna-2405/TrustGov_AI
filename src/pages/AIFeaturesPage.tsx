@@ -662,262 +662,6 @@ function AnomalyDetector() {
   );
 }
 
-// ─── NVIDIA NIM Panel ─────────────────────────────────────────────────────────
-
-interface NimQuota {
-  used: number;
-  limit: number;
-  remaining: number;
-  resetsAt: string;
-}
-
-interface NimResult {
-  text: string;
-  model: string;
-  usage: { promptTokens: number; completionTokens: number; totalTokens: number };
-  quota: NimQuota;
-}
-
-function NimPanel() {
-  const [prompt, setPrompt] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [enableThinking, setEnableThinking] = useState(false);
-  const [result, setResult] = useState<NimResult | null>(null);
-  const [quota, setQuota] = useState<NimQuota | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showImageUrl, setShowImageUrl] = useState(false);
-
-  // Fetch quota on mount
-  useEffect(() => {
-    fetch(`${API_BASE}/nim/status`)
-      .then(r => r.json())
-      .then(d => { if (d.success) setQuota((d.data as { daily: NimQuota }).daily); })
-      .catch(() => {});
-  }, []);
-
-  const call = async () => {
-    if (!prompt.trim() || loading) return;
-    setLoading(true);
-    setError('');
-    setResult(null);
-    try {
-      const body: Record<string, unknown> = { prompt: prompt.trim(), enableThinking };
-      if (imageUrl.trim()) body.imageUrl = imageUrl.trim();
-
-      const res = await fetch(`${API_BASE}/nim/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        // Show retryAfterSeconds if rate limited
-        const retryMsg = (data as { retryAfterSeconds?: number }).retryAfterSeconds
-          ? ` Retry in ${(data as { retryAfterSeconds: number }).retryAfterSeconds}s.`
-          : '';
-        throw new Error(((data as { error?: string }).error ?? 'NIM request failed') + retryMsg);
-      }
-      setResult(data.data as NimResult);
-      setQuota((data.data as NimResult).quota);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong');
-    }
-    setLoading(false);
-  };
-
-  const EXAMPLES = [
-    'Explain how blockchain ensures government record integrity in simple terms.',
-    'What are the best anti-corruption measures for e-governance systems?',
-    'List 5 AI use cases for improving Indian public service delivery.',
-  ];
-
-  const quotaPct = quota ? Math.round((quota.used / quota.limit) * 100) : 0;
-  const quotaColour = quotaPct > 80 ? 'bg-red-500' : quotaPct > 50 ? 'bg-amber-500' : 'bg-brand';
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
-      className="card p-8 lg:col-span-2"
-    >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-        <div className="flex items-start space-x-4">
-          <div className="p-3 rounded-2xl bg-slate-900 text-green-400">
-            <Cpu className="w-7 h-7" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-text-main">NVIDIA NIM — DiffusionGemma 26B</h2>
-            <p className="text-sm text-text-muted mt-0.5">
-              <code className="text-xs bg-slate-100 px-2 py-0.5 rounded font-mono">google/diffusiongemma-26b-a4b-it</code>
-              {' '}· Text + Vision multimodal · Chain-of-thought thinking
-            </p>
-          </div>
-        </div>
-
-        {/* Quota meter */}
-        {quota && (
-          <div className="flex-shrink-0 min-w-[160px] bg-slate-50 border border-border rounded-xl p-3 text-xs space-y-2">
-            <div className="flex justify-between text-text-muted font-semibold">
-              <span>Daily quota</span>
-              <span className={quotaPct > 80 ? 'text-red-600' : 'text-text-main'}>
-                {quota.used}/{quota.limit}
-              </span>
-            </div>
-            <ProgressBar value={quotaPct} colour={quotaColour} />
-            <p className="text-[10px] text-text-muted">
-              {quota.remaining} left · resets {new Date(quota.resetsAt).toLocaleTimeString()}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Rate limit callout */}
-      <div className="flex items-start space-x-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-xs text-amber-800">
-        <Zap className="w-4 h-4 flex-shrink-0 text-amber-600 mt-0.5" />
-        <span>
-          <strong>Rate limited:</strong> 2 requests/min per user · 10 requests/min global · 50 requests/day hard cap.
-          Limits protect your NGC API key and ensure fair usage.
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left — input */}
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {EXAMPLES.map((ex, i) => (
-              <button
-                key={i}
-                onClick={() => setPrompt(ex)}
-                className="text-xs text-slate-600 border border-slate-200 bg-slate-50 rounded-lg px-3 py-1.5 hover:bg-slate-100 transition-colors"
-              >
-                Example {i + 1}
-              </button>
-            ))}
-          </div>
-
-          <textarea
-            id="nim-prompt"
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            placeholder="Ask DiffusionGemma anything..."
-            className="input-field min-h-[120px] resize-none text-sm font-mono"
-          />
-
-          {/* Image URL toggle */}
-          <div className="space-y-2">
-            <button
-              onClick={() => setShowImageUrl(!showImageUrl)}
-              className="flex items-center space-x-2 text-xs text-text-muted hover:text-brand transition-colors"
-            >
-              <Image className="w-3.5 h-3.5" />
-              <span>{showImageUrl ? 'Remove image URL' : 'Attach image URL (optional)'}</span>
-            </button>
-            {showImageUrl && (
-              <input
-                id="nim-image-url"
-                type="url"
-                value={imageUrl}
-                onChange={e => setImageUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                className="input-field text-sm"
-              />
-            )}
-          </div>
-
-          {/* Thinking toggle */}
-          <label className="flex items-center space-x-3 cursor-pointer select-none">
-            <div
-              onClick={() => setEnableThinking(!enableThinking)}
-              className={`relative w-10 h-5 rounded-full transition-colors duration-300 ${
-                enableThinking ? 'bg-brand' : 'bg-slate-200'
-              }`}
-            >
-              <div
-                className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 ${
-                  enableThinking ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </div>
-            <span className="text-sm text-text-muted">
-              Enable chain-of-thought thinking
-              <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 rounded px-1.5 py-0.5">DiffusionGemma feature</span>
-            </span>
-          </label>
-
-          <button
-            id="nim-submit-btn"
-            onClick={call}
-            disabled={loading || !prompt.trim()}
-            className="w-full flex items-center justify-center space-x-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-slate-700 transition-all duration-300 shadow-lg shadow-slate-900/20 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
-            <span>{loading ? 'Generating...' : 'Run DiffusionGemma 26B'}</span>
-          </button>
-
-          {error && (
-            <div className="flex items-start space-x-2 text-error text-sm bg-red-50 border border-red-100 rounded-xl p-3">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Right — response */}
-        <div>
-          <AnimatePresence>
-            {result ? (
-              <motion.div
-                key="result"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                {/* Model + usage pill */}
-                <div className="flex flex-wrap gap-2">
-                  <span className="text-[10px] bg-slate-900 text-green-400 font-mono px-2.5 py-1 rounded-full">
-                    {result.model}
-                  </span>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                    {result.usage.totalTokens} tokens
-                  </span>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                    {result.usage.completionTokens} generated
-                  </span>
-                </div>
-
-                {/* Response text */}
-                <div className="bg-slate-950 rounded-2xl p-5 text-sm text-green-300 font-mono whitespace-pre-wrap leading-relaxed max-h-[360px] overflow-y-auto">
-                  {result.text}
-                </div>
-
-                <div className="flex items-center space-x-2 text-success text-xs font-semibold">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  <span>Response generated successfully</span>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="h-full min-h-[280px] bg-slate-950 rounded-2xl flex flex-col items-center justify-center text-center p-8"
-              >
-                <Cpu className="w-10 h-10 text-slate-600 mb-3" />
-                <p className="text-slate-500 text-sm">DiffusionGemma response will appear here</p>
-                <p className="text-slate-600 text-xs mt-2">Supports text and image inputs</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 
 export function AIFeaturesPage() {
   return (
@@ -930,14 +674,14 @@ export function AIFeaturesPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <span className="section-label">Powered by Gemini AI + NVIDIA NIM</span>
+          <span className="section-label">Powered by NVIDIA Llama 3.1 8B</span>
           <h1 className="text-5xl font-bold text-text-main mb-4">
             🤖 TrustGov{' '}
             <span className="text-brand">AI Features</span>
           </h1>
           <p className="text-lg text-text-muted max-w-2xl mx-auto">
-            Intelligent governance for a transparent India — five live AI capabilities
-            powered by Google Gemini and NVIDIA DiffusionGemma 26B.
+            Intelligent governance for a transparent India — four live AI capabilities
+            powered by NVIDIA Llama 3.1 8B.
           </p>
 
           {/* Feature pills */}
@@ -947,7 +691,6 @@ export function AIFeaturesPage() {
               { label: 'AI Assistant', colour: 'bg-violet-50 text-violet-700 border-violet-200' },
               { label: 'Sentiment Analysis', colour: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
               { label: 'Fraud Detection', colour: 'bg-red-50 text-red-700 border-red-200' },
-              { label: 'NVIDIA DiffusionGemma 26B', colour: 'bg-slate-900 text-green-400 border-slate-700' },
             ].map(({ label, colour }) => (
               <span key={label} className={`badge border text-[11px] py-1.5 px-4 ${colour}`}>
                 {label}
@@ -964,9 +707,6 @@ export function AIFeaturesPage() {
           <AnomalyDetector />
         </div>
 
-        {/* NVIDIA NIM — full width */}
-        <NimPanel />
-
         {/* Footer note */}
         <motion.p
           initial={{ opacity: 0 }}
@@ -974,7 +714,7 @@ export function AIFeaturesPage() {
           transition={{ delay: 0.8 }}
           className="text-center text-xs text-text-muted mt-12"
         >
-          Gemini responses are generated by Google AI. NIM responses by NVIDIA DiffusionGemma 26B.
+          All AI responses are generated by NVIDIA Llama 3.1 8B.
           All results are for demonstration purposes.
         </motion.p>
       </div>

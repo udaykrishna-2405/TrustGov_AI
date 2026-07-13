@@ -14,7 +14,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [generatedUserId, setGeneratedUserId] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +28,11 @@ export function RegisterPage() {
         return;
       }
 
-      setGeneratedUserId(res.userId || '');
+      setSuccess(true);
       setTimeout(() => {
         navigate('/login');
       }, 1800);
-    } catch (err) {
+    } catch (err: any) {
       setError('Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -57,7 +57,7 @@ export function RegisterPage() {
             <span className="text-2xl font-bold tracking-tight text-text-main">TrustGov</span>
           </Link>
           <h1 className="text-3xl font-bold text-text-main mb-2">Create Secure Identity</h1>
-          <p className="text-text-muted">Register once. Get your TrustGov User ID for future logins.</p>
+          <p className="text-text-muted">Register to access national e-governance services.</p>
         </div>
 
         <form onSubmit={handleRegister} className="card p-8 md:p-10 bg-white/80 backdrop-blur-sm border-white/50 space-y-5">
@@ -85,24 +85,23 @@ export function RegisterPage() {
             </div>
           )}
 
-          {generatedUserId && (
+          {success && (
             <div className="flex items-center justify-between text-sm bg-success/5 border border-success/20 p-4 rounded-xl">
-              <span className="flex items-center text-success"><CheckCircle className="w-4 h-4 mr-2" />User ID Created</span>
-              <span className="font-bold text-text-main">{generatedUserId}</span>
+              <span className="flex items-center text-success"><CheckCircle className="w-4 h-4 mr-2" />Registration Successful! Redirecting...</span>
             </div>
           )}
 
           <button type="submit" disabled={isLoading} className="btn-primary w-full py-4 flex items-center justify-center group">
             {isLoading ? 'Creating Account...' : (
               <>
-                Register & Generate User ID
+                Register Account
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </>
             )}
           </button>
 
           <p className="text-xs text-center text-text-muted">
-            Already registered? <Link to="/login" className="font-semibold text-brand hover:underline">Login with User ID or phone</Link>
+            Already registered? <Link to="/login" className="font-semibold text-brand hover:underline">Login with email and password</Link>
           </p>
         </form>
       </motion.div>
