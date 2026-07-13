@@ -4,7 +4,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import net from "net";
 import app from "./server/app";
-import { verifyMongoConnection } from "./server/db/mongo";
+import { verifyMongoConnection, seedDemoUser } from "./server/db/mongo";
 
 const RESERVED_DEV_PORTS = new Set([3001, 5000]);
 const DEFAULT_HMR_PORT = Number(process.env.VITE_HMR_PORT || 24678);
@@ -55,6 +55,7 @@ async function startServer() {
   try {
     await verifyMongoConnection();
     console.log('[TrustGov] MongoDB connection verified.');
+    await seedDemoUser(); // seed demo account so login works immediately
   } catch (error) {
     console.error('[TrustGov] MongoDB connection failed. Check MONGO_URI and MONGO_DB_NAME.');
     console.error(error);

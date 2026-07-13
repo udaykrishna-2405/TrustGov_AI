@@ -148,3 +148,34 @@ export const verifyMongoConnection = async () => {
 };
 
 export const isUsingInMemoryDb = () => usingInMemoryFallback;
+
+/**
+ * Seeds a demo user so login works out of the box without registering.
+ * Demo credentials:
+ *   User ID : TG-00001
+ *   Phone   : 8939687210
+ *   OTP     : 123456  (DEMO_OTP from .env)
+ */
+export const seedDemoUser = async () => {
+  const { createHash } = await import('crypto');
+  const bcrypt = await import('bcryptjs');
+
+  const users = await getCollection<Record<string, any>>(process.env.USERS_COLLECTION || 'users');
+
+  // Only seed if collection is empty
+  const existing = await users.findOne({ userId: 'TG-00001' });
+  if (existing) return;
+
+  const passwordHash = await bcrypt.default.hash('demo1234', 10);
+
+  await users.insertOne({
+    userId:       'TG-00001',
+    name:         'Demo Citizen',
+    email:        'demo@trustgov.in',
+    phone:        '8939687210',
+    passwordHash,
+    createdAt:    new Date(),
+  });
+
+  console.log('[TrustGov] Demo user seeded → User ID: TG-00001 | Phone: 8939687210 | OTP: 123456');
+};
