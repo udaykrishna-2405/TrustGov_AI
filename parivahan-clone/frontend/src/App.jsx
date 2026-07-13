@@ -8,6 +8,7 @@ import VehicleRegistration from './pages/VehicleRegistration.jsx';
 import ApplicationStatus from './pages/ApplicationStatus.jsx';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
+import TrustGovPopup from './components/TrustGovPopup.jsx';
 
 // ─── Auth Context ─────────────────────────────────────────────
 export const AuthContext = createContext(null);
@@ -64,6 +65,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <TrustGovPopup />
         <div className="flex flex-col min-h-screen">
           <Navbar />
           <main className="flex-grow">

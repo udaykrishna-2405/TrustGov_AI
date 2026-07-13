@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import TrustGovPopup from './components/TrustGovPopup';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -23,6 +24,7 @@ const ProtectedRoute = ({ children }) => {
 function AppContent() {
   return (
     <div className="app">
+      <TrustGovPopup />
       <Header />
       <main className="main-content">
         <Routes>

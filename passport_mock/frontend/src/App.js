@@ -7,6 +7,7 @@ import { ToastProvider } from './components/UI';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import { LoginModal, RegisterModal } from './components/AuthModals';
+import TrustGovPopup from './components/TrustGovPopup';
 
 import Home from './pages/Home';
 import ApplyForm from './pages/ApplyForm';
@@ -20,6 +21,7 @@ function AppInner() {
 
   return (
     <>
+      <TrustGovPopup />
       <Header
         onLoginClick={() => setLoginOpen(true)}
         onRegisterClick={() => setRegisterOpen(true)}

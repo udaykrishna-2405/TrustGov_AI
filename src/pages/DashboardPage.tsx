@@ -240,7 +240,14 @@ export function DashboardPage() {
     const redirectUrl = serviceRedirectMap[activeToken.service.id];
     console.log("Token Done -> Service ID:", activeToken.service.id, "Redirect URL:", redirectUrl);
     if (redirectUrl) {
-      window.location.href = redirectUrl;
+      try {
+        const url = new URL(redirectUrl);
+        url.searchParams.set('tg_token', activeToken.meta.tokenId);
+        url.searchParams.set('tg_tx', activeToken.meta.blockchainTxId);
+        window.location.href = url.toString();
+      } catch (err) {
+        window.location.href = redirectUrl;
+      }
       return;
     }
 
