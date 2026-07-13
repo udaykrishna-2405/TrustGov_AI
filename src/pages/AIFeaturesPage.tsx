@@ -515,27 +515,31 @@ function AnomalyDetector() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const SAMPLE_TRANSACTION = {
-    id: 'TXN-2024-8847',
-    department: 'Public Works',
-    amount: 4750000,
-    vendor: 'BuildFast Contractors Pvt Ltd',
-    description: 'Road resurfacing - Sector 12',
-    date: '2024-07-10',
-    previousPayments: [1200000, 1200000, 1200000],
-    currentPayment: 4750000,
-    note: 'Urgent advance payment requested by vendor before work completion',
-  };
+  const [vendor, setVendor] = useState('BuildFast Contractors Pvt Ltd');
+  const [amount, setAmount] = useState('4750000');
+  const [department, setDepartment] = useState('Public Works');
+  const [note, setNote] = useState('Urgent advance payment requested by vendor before work completion');
 
   const detect = async () => {
     setLoading(true);
     setError('');
     setResult(null);
     try {
+      const transaction = {
+        id: `TXN-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
+        department,
+        amount: Number(amount) || 0,
+        vendor,
+        description: 'Fund Transfer',
+        date: new Date().toISOString().split('T')[0],
+        currentPayment: Number(amount) || 0,
+        note,
+      };
+
       const res = await fetch(`${API_BASE}/detect-anomaly`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transaction: SAMPLE_TRANSACTION }),
+        body: JSON.stringify({ transaction }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Detection failed');
@@ -562,18 +566,46 @@ function AnomalyDetector() {
       colour="bg-red-50 text-red-600"
     >
       <div className="space-y-4">
-        {/* Transaction preview */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2 text-sm">
-          <p className="font-semibold text-amber-800 text-xs uppercase tracking-wider">Demo Transaction</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-amber-900">
-            <span className="text-amber-600">Vendor:</span>
-            <span className="font-medium">BuildFast Contractors Pvt Ltd</span>
-            <span className="text-amber-600">Amount:</span>
-            <span className="font-medium">₹47,50,000</span>
-            <span className="text-amber-600">Department:</span>
-            <span className="font-medium">Public Works</span>
-            <span className="text-amber-600">Note:</span>
-            <span className="font-medium text-amber-800">Urgent advance before work completion</span>
+        {/* Transaction input */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 text-sm">
+          <p className="font-semibold text-amber-800 text-xs uppercase tracking-wider">Transaction Details</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-amber-900">
+            <div className="space-y-1">
+              <label className="text-amber-600 text-xs font-semibold">Vendor</label>
+              <input 
+                type="text" 
+                value={vendor} 
+                onChange={e => setVendor(e.target.value)}
+                className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-amber-600 text-xs font-semibold">Amount (₹)</label>
+              <input 
+                type="number" 
+                value={amount} 
+                onChange={e => setAmount(e.target.value)}
+                className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-amber-600 text-xs font-semibold">Department</label>
+              <input 
+                type="text" 
+                value={department} 
+                onChange={e => setDepartment(e.target.value)}
+                className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-amber-600 text-xs font-semibold">Note / Justification</label>
+              <textarea 
+                value={note} 
+                onChange={e => setNote(e.target.value)}
+                rows={2}
+                className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none"
+              />
+            </div>
           </div>
         </div>
 
