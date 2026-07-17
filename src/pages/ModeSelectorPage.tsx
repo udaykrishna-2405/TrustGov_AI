@@ -9,43 +9,17 @@ import {
 const MODES = [
   {
     id: 'government',
-    label: 'CivicAI',
-    emoji: '🏗️',
-    tagline: 'AI-powered public sector transparency & citizen services',
+    label: 'TN Trust AI',
+    emoji: '🏛️',
+    tagline: 'Tamil Nadu Government AI-powered public sector transparency portal',
     color: 'from-blue-600 to-indigo-700',
     shadowColor: 'shadow-blue-500/30',
     borderColor: 'border-blue-500/20',
     hoverBorder: 'hover:border-blue-500/60',
     badgeColor: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
     Icon: Shield,
-    features: ['Citizen Complaint Portal', 'Public Fund Transparency', 'AI Issue Resolution', 'Blockchain Audit Trail'],
-  },
-  {
-    id: 'corporate',
-    label: 'EnterpriseAI',
-    emoji: '🏢',
-    tagline: 'Intelligent enterprise compliance & employee management',
-    color: 'from-violet-600 to-purple-700',
-    shadowColor: 'shadow-violet-500/30',
-    borderColor: 'border-violet-500/20',
-    hoverBorder: 'hover:border-violet-500/60',
-    badgeColor: 'bg-violet-500/10 text-violet-300 border-violet-500/20',
-    Icon: Building2,
-    features: ['Employee Issue Tracking', 'Compliance Monitoring', 'AI Risk Detection', 'Policy Enforcement'],
-  },
-  {
-    id: 'industry',
-    label: 'IndustrialAI',
-    emoji: '🏗️',
-    tagline: 'Smart manufacturing quality & supply chain integrity',
-    color: 'from-emerald-600 to-teal-700',
-    shadowColor: 'shadow-emerald-500/30',
-    borderColor: 'border-emerald-500/20',
-    hoverBorder: 'hover:border-emerald-500/60',
-    badgeColor: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
-    Icon: Factory,
-    features: ['NCR / Quality Reports', 'Predictive Maintenance', 'Production Batch Tracking', 'ISO Compliance AI'],
-  },
+    features: ['Citizen Grievance Portal', 'Public Fund Transparency', 'AI Issue Resolution', 'Blockchain Audit Trail'],
+  }
 ];
 
 export function ModeSelectorPage() {
@@ -158,23 +132,22 @@ export function ModeSelectorPage() {
             Unified Trust & Transparency Platform
           </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6">
-            Choose Your
+            Welcome to
             <br />
-            <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">
-              Workspace Mode
+            <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-300 bg-clip-text text-transparent">
+              TN Trust AI
             </span>
           </h1>
           <p className="text-white/40 text-lg font-light max-w-xl mx-auto leading-relaxed">
-            Intelligent Transparency. For Every Institution.
+            Intelligent Transparency. For Tamil Nadu Government.
           </p>
           <p className="text-white/25 text-sm font-light max-w-lg mx-auto mt-2">
-            AI TrustOS adapts to your organisation type. Select the mode that matches
-            your sector to access the right AI tools and workflows.
+            Secure, blockchain-verified public portal for citizen services, grievance redressal, and government transparency.
           </p>
         </motion.div>
 
         {/* Mode cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
+        <div className="flex justify-center w-full max-w-5xl">
           {MODES.map((mode, i) => {
             const Icon = mode.Icon;
             return (

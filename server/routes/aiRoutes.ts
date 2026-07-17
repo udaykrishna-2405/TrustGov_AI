@@ -7,6 +7,7 @@ import {
   analyzeMeeting, analyzePulseData, analyzeSafetyIncident,
 } from '../services/aiService';
 import { supabase } from '../db/supabase';
+import { calculateTrustScore } from '../services/aiService';
 
 const router = Router();
 
@@ -131,6 +132,36 @@ router.post('/classify-complaint', authenticate, async (req: AuthRequest, res: R
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// GET /api/ai/trust-score
+router.get('/trust-score', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const wid = req.user!.workspaceId;
+    const [issues, feedback, resolvedIssues, flaggedFunds] = await Promise.all([
+      supabase.from('issues').select('id', { count: 'exact' }).eq('workspace_id', wid),
+      supabase.from('feedback').select('rating').eq('workspace_id', wid),
+      supabase.from('issues').select('id').eq('workspace_id', wid).eq('status', 'Resolved'),
+      supabase.from('fund_allocations').select('id').eq('workspace_id', wid).eq('status', 'Flagged'),
+    ]);
+
+    const totalIssues = issues.count || 0;
+    const resolvedCount = resolvedIssues.data?.length || 0;
+    const avgRating = feedback.data?.length
+      ? feedback.data.reduce((s, f) => s + ((f as any).rating || 0), 0) / feedback.data.length
+      : 0;
+
+    const trustScore = await calculateTrustScore({
+      totalIssues,
+      resolvedIssues: resolvedCount,
+      avgResolutionDays: 7,
+      overdueIssues: 0,
+      citizenRating: avgRating,
+      flaggedTransactions: flaggedFunds.data?.length || 0,
+    });
+
+    res.json({ success: true, data: trustScore });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 export default router;

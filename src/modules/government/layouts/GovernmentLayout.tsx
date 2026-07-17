@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, AlertCircle, Shield, Menu, X, ChevronRight, CheckCircle, Search, Landmark, FileText, IndianRupee, MessageSquare, HandHeart, LogOut } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, FileText, IndianRupee, HandHeart, Landmark, Shield, LogOut, Search, Bell, Target, Bot, ShieldCheck, Menu, X, ChevronRight, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../../AuthContext';
 import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { SecurityAlertBanner } from '../../../components/SecurityAlertBanner';
 
 const navItems = [
   { path: '/gov/dashboard', label: 'Citizen Dashboard', icon: LayoutDashboard },
-  { path: '/gov/services', label: 'Public Services Hub', icon: Landmark },
-  { path: '/gov/session-history', label: 'Verification History', icon: Shield },
-  { path: '/gov/complaints', label: 'Grievances & RTI', icon: MessageSquare },
-  { path: '/gov/projects', label: 'Public Projects', icon: FileText },
-  { path: '/gov/funds', label: 'Fund Transparency', icon: IndianRupee },
-  { path: '/gov/departments', label: 'Govt Departments', icon: HandHeart },
+  { path: '/gov/issues', label: 'Grievances & RTI', icon: MessageSquare },
+  { path: '/gov/officer', label: 'Officer Portal', icon: FileText },
+  { path: '/gov/collector', label: 'Collector Dashboard', icon: Landmark },
+  { path: '/gov/minister', label: 'Minister Dashboard', icon: Target },
+  { path: '/gov/ai', label: 'AI Intelligence Hub', icon: Bot },
+  { path: '/gov/security', label: 'Security & Access', icon: ShieldCheck },
+  { path: '/gov/services', label: 'Public Services Hub', icon: HandHeart },
 ];
 
 export function GovernmentLayout() {

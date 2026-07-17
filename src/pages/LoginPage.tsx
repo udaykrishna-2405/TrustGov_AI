@@ -44,7 +44,7 @@ export function LoginPage() {
   const { login } = useAuth();
   const [searchParams] = useSearchParams();
 
-  const modeParam = (searchParams.get('mode') || 'government') as WorkspaceType;
+  const modeParam = 'government' as WorkspaceType;
 
   const [step, setStep] = useState<Step>('login');
   const [email, setEmail] = useState('');
@@ -152,9 +152,6 @@ export function LoginPage() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-text-muted mb-4">
               <Icon className={`w-3.5 h-3.5 ${meta.color}`} />
               {meta.emoji} {meta.label} Portal
-              <button onClick={() => navigate('/')} className="ml-1 hover:text-text-main transition-colors text-[10px] underline">
-                change
-              </button>
             </div>
 
             <h1 className="text-3xl font-bold text-text-main mb-2">

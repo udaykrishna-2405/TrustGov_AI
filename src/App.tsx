@@ -31,24 +31,15 @@ import { GovComplaints } from './modules/government/pages/GovComplaints';
 import { GovProjects } from './modules/government/pages/GovProjects';
 import { GovFunds } from './modules/government/pages/GovFunds';
 import { GovDepartments } from './modules/government/pages/GovDepartments';
+import { GovIssues } from './modules/government/pages/GovIssues';
+import { GovNewIssue } from './modules/government/pages/GovNewIssue';
+import { GovOfficer } from './modules/government/pages/GovOfficer';
+import { GovCollector } from './modules/government/pages/GovCollector';
+import { GovMinister } from './modules/government/pages/GovMinister';
+import { GovAI } from './modules/government/pages/GovAI';
+import { GovSecurity } from './modules/government/pages/GovSecurity';
 
-// Modules: Corporate
-import { CorporateLayout } from './modules/corporate/layouts/CorporateLayout';
-import { CorpDashboard } from './modules/corporate/pages/CorpDashboard';
-import { CorpHR } from './modules/corporate/pages/CorpHR';
-import { CorpProjects } from './modules/corporate/pages/CorpProjects';
-import { CorpTeams } from './modules/corporate/pages/CorpTeams';
-import { CorpCompliance } from './modules/corporate/pages/CorpCompliance';
-import { CorpAssets } from './modules/corporate/pages/CorpAssets';
 
-// Modules: Industry
-import { IndustryLayout } from './modules/industry/layouts/IndustryLayout';
-import { IndustryDashboard } from './modules/industry/pages/IndustryDashboard';
-import { IndustryProduction } from './modules/industry/pages/IndustryProduction';
-import { IndustryMachines } from './modules/industry/pages/IndustryMachines';
-import { IndustryInventory } from './modules/industry/pages/IndustryInventory';
-import { IndustryQuality } from './modules/industry/pages/IndustryQuality';
-import { IndustryMaintenance } from './modules/industry/pages/IndustryMaintenance';
 
 const FULLSCREEN_PATHS = ['/', '/setup', '/login', '/register'];
 
@@ -83,7 +74,7 @@ const DynamicDashboardRouter = () => {
 function AppContent() {
   const pathname = window.location.pathname;
   // Dynamic fullscreen check
-  const isFullscreen = FULLSCREEN_PATHS.includes(pathname) || pathname.startsWith('/gov') || pathname.startsWith('/corp') || pathname.startsWith('/industry');
+  const isFullscreen = FULLSCREEN_PATHS.includes(pathname) || pathname.startsWith('/gov');
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -123,37 +114,19 @@ function AppContent() {
             <Route path="projects" element={<GovProjects />} />
             <Route path="funds" element={<GovFunds />} />
             <Route path="departments" element={<GovDepartments />} />
+            <Route path="issues" element={<GovIssues />} />
+            <Route path="issues/new" element={<GovNewIssue />} />
+            <Route path="officer" element={<GovOfficer />} />
+            <Route path="collector" element={<GovCollector />} />
+            <Route path="minister" element={<GovMinister />} />
+            <Route path="ai" element={<GovAI />} />
+            <Route path="security" element={<GovSecurity />} />
           </Route>
 
-          {/* ── Corporate Workspace ── */}
-          <Route path="/corp" element={
-            <ProtectedRoute requiredMode="corporate">
-              <CorporateLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<CorpDashboard />} />
-            <Route path="hr" element={<CorpHR />} />
-            <Route path="projects" element={<CorpProjects />} />
-            <Route path="teams" element={<CorpTeams />} />
-            <Route path="compliance" element={<CorpCompliance />} />
-            <Route path="assets" element={<CorpAssets />} />
-          </Route>
-
-          {/* ── Industry Workspace ── */}
-          <Route path="/industry" element={
-            <ProtectedRoute requiredMode="industry">
-              <IndustryLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<IndustryDashboard />} />
-            <Route path="production" element={<IndustryProduction />} />
-            <Route path="machines" element={<IndustryMachines />} />
-            <Route path="inventory" element={<IndustryInventory />} />
-            <Route path="quality" element={<IndustryQuality />} />
-            <Route path="maintenance" element={<IndustryMaintenance />} />
-          </Route>
+          {/* ── Redirect Corporate and Industry to Government ── */}
+          <Route path="/corp/*" element={<Navigate to="/gov/dashboard" replace />} />
+          <Route path="/industry/*" element={<Navigate to="/gov/dashboard" replace />} />
+          <Route path="/enterprise/*" element={<Navigate to="/gov/dashboard" replace />} />
 
           {/* ── Fallback ── */}
           <Route path="*" element={<Navigate to="/" replace />} />
