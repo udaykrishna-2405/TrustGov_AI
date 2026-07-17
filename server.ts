@@ -27,7 +27,7 @@ const resolveServerPort = async (basePort: number) => {
     const candidate = basePort + offset;
     if (RESERVED_DEV_PORTS.has(candidate)) continue;
     if (await isPortAvailable(candidate)) {
-      console.warn(`[TrustGov] Port ${basePort} is in use. Falling back to ${candidate}.`);
+      console.warn(`[TrustOS] Port ${basePort} is in use. Falling back to ${candidate}.`);
       return candidate;
     }
   }
@@ -41,7 +41,7 @@ const resolveHmrPort = async (basePort: number) => {
   for (let offset = 1; offset <= 20; offset += 1) {
     const candidate = basePort + offset;
     if (await isPortAvailable(candidate, '127.0.0.1')) {
-      console.warn(`[TrustGov] HMR port ${basePort} is in use. Falling back to ${candidate}.`);
+      console.warn(`[TrustOS] HMR port ${basePort} is in use. Falling back to ${candidate}.`);
       return candidate;
     }
   }
@@ -54,11 +54,14 @@ async function startServer() {
 
   try {
     await verifySupabaseConnection();
-    console.log('[TrustGov] Supabase connection verified.');
+    console.log('[AI TrustOS] Supabase connection verified.');
   } catch (error) {
-    console.error('[TrustGov] Supabase connection failed. Check SUPABASE_URL and SUPABASE_SERVICE_KEY.');
+    console.error('[AI TrustOS] Supabase connection failed. Check SUPABASE_URL and SUPABASE_SERVICE_KEY.');
     console.error(error);
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
+    console.warn('[AI TrustOS] Continuing in development mode despite Supabase error...');
   }
 
   // Vite middleware for development
@@ -86,8 +89,8 @@ async function startServer() {
   const port = await resolveServerPort(DEFAULT_PORT);
 
   app.listen(port, "0.0.0.0", () => {
-    console.log(`[TrustGov] Server running on http://localhost:${port}`);
-    console.log(`[TrustGov] Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[AI TrustOS] ✅ Server running on http://localhost:${port}`);
+    console.log(`[AI TrustOS] Environment: ${process.env.NODE_ENV || 'development'} | Modes: CivicAI, EnterpriseAI, IndustrialAI`);
   });
 }
 

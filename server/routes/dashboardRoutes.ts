@@ -1,98 +1,123 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { supabase } from '../db/supabase';
+import { calculateTrustScore, generatePredictions } from '../services/aiService';
 
 const router = Router();
+router.use(authenticate);
 
-// GET /api/dashboard/stats — public transparency data
-router.get('/stats', async (_req: Request, res: Response) => {
+// GET /api/dashboard/stats
+router.get('/stats', async (req: AuthRequest, res: Response) => {
   try {
-    const [complaints, projects, departments, resolved] = await Promise.all([
-      supabase.from('complaints').select('id, status, priority, category'),
-      supabase.from('projects').select('id, status, budget'),
-      supabase.from('departments').select('id', { count: 'exact' }),
-      supabase.from('complaints').select('id').eq('status', 'Resolved'),
+    const wid = req.user!.workspaceId;
+    const [issues, projects, funds, feedback, resolvedIssues, flaggedFunds] = await Promise.all([
+      supabase.from('issues').select('id, status, priority, category, created_at', { count: 'exact' }).eq('workspace_id', wid),
+      supabase.from('projects').select('id, status, budget', { count: 'exact' }).eq('workspace_id', wid),
+      supabase.from('fund_allocations').select('id, amount, status, ai_risk_score').eq('workspace_id', wid),
+      supabase.from('feedback').select('rating').eq('workspace_id', wid),
+      supabase.from('issues').select('id').eq('workspace_id', wid).eq('status', 'Resolved'),
+      supabase.from('fund_allocations').select('id').eq('workspace_id', wid).eq('status', 'Flagged'),
     ]);
 
-    const totalComplaints = complaints.data?.length || 0;
-    const resolvedCount = resolved.data?.length || 0;
-    const totalProjects = projects.data?.length || 0;
-    const totalBudget = projects.data?.reduce((sum, p) => sum + (Number(p.budget) || 0), 0) || 0;
+    const totalIssues = issues.count || 0;
+    const resolvedCount = resolvedIssues.data?.length || 0;
+    const totalBudget = funds.data?.reduce((s, f) => s + (Number(f.amount) || 0), 0) || 0;
+    const avgRating = feedback.data?.length
+      ? feedback.data.reduce((s, f) => s + ((f as any).rating || 0), 0) / feedback.data.length
+      : 0;
 
     const priorityBreakdown: Record<string, number> = {};
     const categoryBreakdown: Record<string, number> = {};
-    complaints.data?.forEach((c) => {
-      priorityBreakdown[c.priority] = (priorityBreakdown[c.priority] || 0) + 1;
-      categoryBreakdown[c.category] = (categoryBreakdown[c.category] || 0) + 1;
+    const statusBreakdown: Record<string, number> = {};
+    issues.data?.forEach((i: any) => {
+      priorityBreakdown[i.priority] = (priorityBreakdown[i.priority] || 0) + 1;
+      categoryBreakdown[i.category] = (categoryBreakdown[i.category] || 0) + 1;
+      statusBreakdown[i.status] = (statusBreakdown[i.status] || 0) + 1;
     });
+
+    // AI Trust Score — non-blocking
+    let trustScore: any = null;
+    try {
+      trustScore = await calculateTrustScore({
+        totalIssues,
+        resolvedIssues: resolvedCount,
+        avgResolutionDays: 7,
+        overdueIssues: 0,
+        citizenRating: avgRating,
+        flaggedTransactions: flaggedFunds.data?.length || 0,
+      });
+    } catch {}
 
     res.json({
       success: true,
       stats: {
-        totalComplaints,
-        resolvedComplaints: resolvedCount,
-        resolutionRate: totalComplaints
-          ? Math.round((resolvedCount / totalComplaints) * 100)
-          : 0,
-        totalProjects,
-        activeProjects: projects.data?.filter((p) => p.status === 'In Progress').length || 0,
+        totalIssues,
+        resolvedIssues: resolvedCount,
+        resolutionRate: totalIssues ? Math.round((resolvedCount / totalIssues) * 100) : 0,
+        totalProjects: projects.count || 0,
+        activeProjects: projects.data?.filter((p: any) => p.status === 'In Progress').length || 0,
         totalBudgetAllocated: totalBudget,
-        totalDepartments: departments.count || 0,
+        flaggedTransactions: flaggedFunds.data?.length || 0,
+        avgCitizenRating: Math.round(avgRating * 10) / 10,
         priorityBreakdown,
         categoryBreakdown,
+        statusBreakdown,
+        trustScore,
       },
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/dashboard/departments — public
-router.get('/departments', async (_req: Request, res: Response) => {
+// GET /api/dashboard/departments
+router.get('/departments', async (req: AuthRequest, res: Response) => {
   const { data, error } = await supabase
     .from('departments')
-    .select('id, name, description')
+    .select('id, name, description, head_user_id')
+    .eq('workspace_id', req.user!.workspaceId)
     .order('name');
-  if (error) return res.status(500).json({ success: false, error: error.message });
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true, departments: data });
 });
 
-// GET /api/services — public
-router.get('/services', async (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    services: [
-      { id: 'tax', name: 'Income Tax e-Filing', description: 'File your income tax returns securely.', icon: 'FileText' },
-      { id: 'passport', name: 'Passport Seva', description: 'Apply for or renew your passport.', icon: 'Plane' },
-      { id: 'parivahan', name: 'Parivahan Sewa', description: 'Vehicle registration and driving license.', icon: 'Car' },
-    ]
-  });
+// GET /api/dashboard/ai-insights — predictive analytics
+router.get('/ai-insights', async (req: AuthRequest, res: Response) => {
+  try {
+    const wid = req.user!.workspaceId;
+    const { data: issues } = await supabase
+      .from('issues')
+      .select('category, created_at')
+      .eq('workspace_id', wid)
+      .order('created_at', { ascending: true });
+
+    // Build monthly counts (last 6 months)
+    const now = new Date();
+    const issueCountsByMonth: number[] = new Array(6).fill(0);
+    const categoryTrends: Record<string, number> = {};
+    issues?.forEach((i: any) => {
+      const monthsAgo = Math.floor((now.getTime() - new Date(i.created_at).getTime()) / (30 * 24 * 3600 * 1000));
+      if (monthsAgo < 6) issueCountsByMonth[5 - monthsAgo]++;
+      categoryTrends[i.category] = (categoryTrends[i.category] || 0) + 1;
+    });
+
+    const predictions = await generatePredictions({
+      issueCountsByMonth,
+      categoryTrends,
+      resolutionRates: [0.7, 0.72, 0.75, 0.73, 0.78, 0.80],
+    });
+
+    res.json({ success: true, predictions, issueCountsByMonth, categoryTrends });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/activity — mock activity log
-router.get('/activity', async (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    activity: [
-      { id: '1', type: 'Login', location: 'Chennai, India', status: 'Success', timestamp: new Date().toISOString() }
-    ]
-  });
-});
-
-// POST /api/request-service — issue a mock token
-router.post('/request-service', async (req: Request, res: Response) => {
-  const { serviceId } = req.body;
-  if (!serviceId) return res.status(400).json({ success: false, error: 'serviceId required' });
-  
-  res.json({
-    success: true,
-    tokenMeta: {
-      tokenId: `TG-TKN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-      accessLevel: 'Verified Citizen',
-      validity: '15m',
-      blockchainTxId: `AMB-VERIFIED-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-      requestHash: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
-    }
-  });
+// GET /api/dashboard/workspace — current workspace info
+router.get('/workspace', async (req: AuthRequest, res: Response) => {
+  const { data, error } = await supabase
+    .from('workspaces')
+    .select('id, name, type, logo_url, description, is_active, created_at')
+    .eq('id', req.user!.workspaceId)
+    .single();
+  if (error) return res.status(404).json({ error: 'Workspace not found' });
+  res.json({ success: true, workspace: data });
 });
 
 export default router;

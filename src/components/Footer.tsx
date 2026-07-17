@@ -13,11 +13,11 @@ export function Footer() {
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <span className="text-2xl font-bold tracking-tight text-text-main">
-                TrustGov
+                AI TrustOS
               </span>
             </Link>
             <p className="text-text-muted max-w-sm mb-10 leading-relaxed font-light">
-              TrustGov is a secure identity gateway providing unified, encrypted access to all government digital services. Built with Zero Trust architecture and blockchain integrity.
+              AI TrustOS is a unified AI &amp; blockchain-powered transparency platform for government, enterprise, and industrial organizations. Intelligent Transparency. For Every Institution.
             </p>
             <div className="flex space-x-6">
               <a href="#" className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-text-muted hover:text-brand hover:bg-brand/5 transition-all duration-300"><Twitter className="w-5 h-5" /></a>
@@ -59,7 +59,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border pt-10 flex flex-col md:flex-row justify-between items-center text-[11px] uppercase tracking-widest font-bold text-text-muted">
-          <p>© 2026 TrustGov. Official Secure Gateway Prototype.</p>
+          <p>© 2026 AI TrustOS. Intelligent Transparency Platform.</p>
           <div className="flex space-x-8 mt-6 md:mt-0">
             <p>Secure Digital Government</p>
             <p>Zero Trust Verified</p>

@@ -1,10 +1,44 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from './lib/utils';
+
+export interface Workspace {
+  id: string;
+  name: string;
+  type: 'government' | 'corporate' | 'industry';
+  logo_url?: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  workspace_id: string;
+  department_id?: string;
+  last_login?: string;
+  workspace?: Workspace;
+}
+
+interface LoginParams {
+  email: string;
+  password: string;
+  workspaceId?: string;
+}
+
+interface RegisterParams {
+  workspaceId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  register: (payload: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; message: string }>;
+  workspaceType: 'government' | 'corporate' | 'industry' | null;
+  login: (params: LoginParams) => Promise<{ success: boolean; message?: string }>;
+  register: (params: RegisterParams) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -15,7 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getCurrentUser = async () => {
+  const workspaceType = (user?.workspace?.type ?? null) as 'government' | 'corporate' | 'industry' | null;
+
+  const getCurrentUser = async (): Promise<User | null> => {
     const token = localStorage.getItem('accessToken');
     if (!token) return null;
     const res = await fetch('/api/auth/me', {
@@ -30,7 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       let currentUser = await getCurrentUser();
       if (!currentUser) {
-        // Try refreshing
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           const refreshed = await fetch('/api/auth/refresh', {
@@ -65,12 +100,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bootstrapSession();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async ({ email, password, workspaceId }: LoginParams) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, workspaceId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -85,12 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (payload: { name: string; email: string; phone: string; password: string }) => {
+  const register = async (params: RegisterParams) => {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(params),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -105,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     const token = localStorage.getItem('accessToken');
-    if (token && refreshToken) {
+    if (token) {
       await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
@@ -113,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ refreshToken }),
-      });
+      }).catch(() => {});
     }
     setUser(null);
     localStorage.removeItem('accessToken');
@@ -121,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, workspaceType, login, register, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
