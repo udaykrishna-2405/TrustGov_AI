@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, FileText, Heart, ShieldAlert, Send, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -8,21 +8,51 @@ const LANGUAGES = [
   'Nepali', 'Konkani', 'Manipuri', 'Bodo', 'Dogri', 'Maithili'
 ];
 
+const WELCOME_MESSAGES: Record<string, string> = {
+  'English': 'Hello! I am TN Trust AI. How can I help you register grievances or learn about government services?',
+  'Tamil': 'வணக்கம்! நான் TN Trust AI. உங்கள் குறைகளை பதிவு செய்ய அல்லது அரச சேவைகள் பற்றி அறிய நான் எப்படி உதவலாம்?',
+  'Hindi': 'नमस्ते! मैं TN Trust AI हूँ। मैं आपकी शिकायतें दर्ज करने या सरकारी सेवाओं के बारे में जानने में कैसे मदद कर सकता हूँ?',
+  'Telugu': 'నమస్కారం! నేను TN Trust AI. నేను మీ ఫిర్యాదులను నమోదు చేయడానికి లేదా ప్రభుత్వ సేవల గురించి తెలుసుకోవడానికి ఎలా సహాయపడగలను?',
+  'Kannada': 'ನಮಸ್ಕಾರ! ನಾನು TN Trust AI. ದೂರುಗಳನ್ನು ನೋಂದಾಯಿಸಲು ಅಥವಾ ಸರ್ಕಾರಿ ಸೇವೆಗಳ ಬಗ್ಗೆ ತಿಳಿಯಲು ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ?'
+};
+
 export function GovAI() {
   const [activeTab, setActiveTab] = useState<'chat' | 'classify' | 'sentiment' | 'fraud'>('chat');
   
   // Chat state
-  const [chatLanguage, setChatLanguage] = useState('Tamil');
+  const [chatLanguage, setChatLanguage] = useState('English');
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', text: string}[]>([
-    { role: 'ai', text: 'வணக்கம்! நான் TN Trust AI. உங்கள் குறைகளை பதிவு செய்ய அல்லது அரச சேவைகள் பற்றி அறிய நான் எப்படி உதவலாம்?' }
+    { role: 'ai', text: WELCOME_MESSAGES['English'] }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    const msg = WELCOME_MESSAGES[chatLanguage] || `Hello! I am TN Trust AI. I am now speaking in ${chatLanguage}. How can I help?`;
+    setChatMessages(prev => {
+      // If only the welcome message is present, replace it.
+      if (prev.length === 1 && prev[0].role === 'ai') {
+        return [{ role: 'ai', text: msg }];
+      }
+      // Otherwise, append a transition message.
+      return [...prev, { role: 'ai', text: msg }];
+    });
+  }, [chatLanguage]);
 
   // Fraud state
   const [fraudInput, setFraudInput] = useState('');
   const [fraudResult, setFraudResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Classify state
+  const [classifyInput, setClassifyInput] = useState('');
+  const [classifyResult, setClassifyResult] = useState<any>(null);
+  const [isClassifying, setIsClassifying] = useState(false);
+
+  // Sentiment state
+  const [sentimentInput, setSentimentInput] = useState('');
+  const [sentimentResult, setSentimentResult] = useState<any>(null);
+  const [isAnalyzingSentiment, setIsAnalyzingSentiment] = useState(false);
 
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +91,40 @@ export function GovAI() {
       });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleClassify = async () => {
+    if (!classifyInput) return;
+    setIsClassifying(true);
+    setClassifyResult(null);
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      setClassifyResult({
+        department: 'Public Works Department',
+        category: 'Infrastructure',
+        confidence: 94
+      });
+    } finally {
+      setIsClassifying(false);
+    }
+  };
+
+  const handleSentimentAnalysis = async () => {
+    if (!sentimentInput) return;
+    setIsAnalyzingSentiment(true);
+    setSentimentResult(null);
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      // Simple logic to mock sentiment
+      const isPositive = sentimentInput.toLowerCase().includes('good') || sentimentInput.toLowerCase().includes('great') || sentimentInput.toLowerCase().includes('thank');
+      setSentimentResult({
+        sentiment: isPositive ? 'Positive' : 'Negative',
+        emotion: isPositive ? 'Satisfaction' : 'Frustration',
+        score: isPositive ? 0.85 : -0.75
+      });
+    } finally {
+      setIsAnalyzingSentiment(false);
     }
   };
 
@@ -211,13 +275,109 @@ export function GovAI() {
               </motion.div>
             )}
 
-            {(activeTab === 'classify' || activeTab === 'sentiment') && (
-              <motion.div key="other" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="h-full flex items-center justify-center text-slate-400">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
-                  </div>
-                  <p>Model loading in background...</p>
+            {activeTab === 'classify' && (
+              <motion.div key="classify" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="h-full flex flex-col">
+                <div className="mb-6 border-b border-slate-100 pb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    Text Classifier
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">Automatically categorize grievances and route them to the appropriate department.</p>
+                </div>
+                <div className="space-y-6">
+                  <textarea 
+                    value={classifyInput}
+                    onChange={(e) => setClassifyInput(e.target.value)}
+                    placeholder="Enter text to classify..."
+                    className="w-full h-32 p-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none resize-none"
+                  />
+                  <button 
+                    onClick={handleClassify}
+                    disabled={!classifyInput || isClassifying}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isClassifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Classify Text
+                  </button>
+                  {classifyResult && (
+                    <div className="p-6 rounded-2xl border border-blue-200 bg-blue-50 mt-6 grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-blue-800 mb-1">Department</p>
+                        <p className="text-lg font-bold text-slate-900">{classifyResult.department}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-blue-800 mb-1">Category</p>
+                        <p className="text-lg font-bold text-slate-900">{classifyResult.category}</p>
+                      </div>
+                      <div className="col-span-2 pt-4 border-t border-blue-200">
+                        <p className="text-sm font-bold text-blue-800 mb-1">Confidence Score</p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 bg-blue-200 rounded-full h-2">
+                            <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${classifyResult.confidence}%` }} />
+                          </div>
+                          <span className="text-sm font-bold text-blue-700">{classifyResult.confidence}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'sentiment' && (
+              <motion.div key="sentiment" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="h-full flex flex-col">
+                <div className="mb-6 border-b border-slate-100 pb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-blue-600" />
+                    Sentiment Analysis
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">Analyze public feedback to gauge citizen satisfaction and emotional response.</p>
+                </div>
+                <div className="space-y-6">
+                  <textarea 
+                    value={sentimentInput}
+                    onChange={(e) => setSentimentInput(e.target.value)}
+                    placeholder="Enter feedback or review..."
+                    className="w-full h-32 p-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none resize-none"
+                  />
+                  <button 
+                    onClick={handleSentimentAnalysis}
+                    disabled={!sentimentInput || isAnalyzingSentiment}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isAnalyzingSentiment ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Analyze Sentiment
+                  </button>
+                  {sentimentResult && (
+                    <div className={`p-6 rounded-2xl border mt-6 ${
+                      sentimentResult.sentiment === 'Positive' ? 'border-emerald-200 bg-emerald-50' : 
+                      sentimentResult.sentiment === 'Negative' ? 'border-red-200 bg-red-50' : 
+                      'border-slate-200 bg-slate-50'
+                    }`}>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className={`text-sm font-bold mb-1 ${
+                            sentimentResult.sentiment === 'Positive' ? 'text-emerald-800' : 
+                            sentimentResult.sentiment === 'Negative' ? 'text-red-800' : 
+                            'text-slate-800'
+                          }`}>Overall Sentiment</p>
+                          <p className={`text-2xl font-bold ${
+                            sentimentResult.sentiment === 'Positive' ? 'text-emerald-700' : 
+                            sentimentResult.sentiment === 'Negative' ? 'text-red-700' : 
+                            'text-slate-700'
+                          }`}>{sentimentResult.sentiment}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-bold mb-1 ${
+                            sentimentResult.sentiment === 'Positive' ? 'text-emerald-800' : 
+                            sentimentResult.sentiment === 'Negative' ? 'text-red-800' : 
+                            'text-slate-800'
+                          }`}>Key Emotion</p>
+                          <p className="text-lg font-bold text-slate-900">{sentimentResult.emotion}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

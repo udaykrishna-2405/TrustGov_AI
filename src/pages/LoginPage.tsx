@@ -7,6 +7,7 @@ import {
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import AccountBlockedScreen, { type BlockedDetails } from '../components/AccountBlockedScreen';
+import { CitizenOTPLogin } from './CitizenOTPLogin';
 
 type Step = 'login' | 'device' | 'token';
 type WorkspaceType = 'government' | 'corporate' | 'industry';
@@ -47,6 +48,7 @@ export function LoginPage() {
   const modeParam = 'government' as WorkspaceType;
 
   const [step, setStep] = useState<Step>('login');
+  const [otpVerified, setOtpVerified] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [workspaceId, setWorkspaceId] = useState('');
@@ -176,7 +178,10 @@ export function LoginPage() {
             <AnimatePresence mode="wait">
 
               {/* ── Login form ─────────────────────────────────────── */}
-              {step === 'login' && (
+              {step === 'login' && modeParam === 'government' && !otpVerified && (
+                <CitizenOTPLogin onSuccess={() => setOtpVerified(true)} />
+              )}
+              {step === 'login' && (modeParam !== 'government' || otpVerified) && (
                 <motion.form
                   key="form"
                   initial={{ opacity: 0, x: -10 }}

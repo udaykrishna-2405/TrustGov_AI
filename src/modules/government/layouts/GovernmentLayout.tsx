@@ -6,6 +6,7 @@ import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { SecurityAlertBanner } from '../../../components/SecurityAlertBanner';
 
 const navItems = [
+  { path: '/gov/services', label: 'Public Services Hub', icon: HandHeart },
   { path: '/gov/dashboard', label: 'Citizen Dashboard', icon: LayoutDashboard },
   { path: '/gov/issues', label: 'Grievances & RTI', icon: MessageSquare },
   { path: '/gov/officer', label: 'Officer Portal', icon: FileText },
@@ -13,7 +14,6 @@ const navItems = [
   { path: '/gov/minister', label: 'Minister Dashboard', icon: Target },
   { path: '/gov/ai', label: 'AI Intelligence Hub', icon: Bot },
   { path: '/gov/security', label: 'Security & Access', icon: ShieldCheck },
-  { path: '/gov/services', label: 'Public Services Hub', icon: HandHeart },
 ];
 
 export function GovernmentLayout() {
@@ -55,8 +55,8 @@ export function GovernmentLayout() {
             <Landmark className="w-6 h-6 text-white" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Government of India</p>
-            <p className="text-xl font-extrabold text-slate-900 leading-tight">CivicAI</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Government of Tamil Nadu</p>
+            <p className="text-xl font-extrabold text-slate-900 leading-tight">TN Trust AI</p>
           </div>
         </div>
         

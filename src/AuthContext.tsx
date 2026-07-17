@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authService } from './services/authService';
 
 export interface Workspace {
   id: string;
@@ -52,6 +53,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const workspaceType = (user?.workspace?.type ?? null) as 'government' | 'corporate' | 'industry' | null;
 
   const getCurrentUser = async (): Promise<User | null> => {
+    if (authService.isAuthenticated()) {
+      return authService.getCurrentUser();
+    }
+
     const token = localStorage.getItem('accessToken');
     if (!token) return null;
     const res = await fetch('/api/auth/me', {
@@ -138,6 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    await authService.logout();
+
     const refreshToken = localStorage.getItem('refreshToken');
     const token = localStorage.getItem('accessToken');
     if (token) {

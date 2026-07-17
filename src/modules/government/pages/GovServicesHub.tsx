@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
-import { Plane, Car, FileText, Landmark, Map, ShieldPlus, Lightbulb, HeartPulse, GraduationCap, Building, FileSignature, Receipt, Sprout, Subscript as Subway, ShieldAlert, Vote, HandCoins } from 'lucide-react';
+import { Plane, Car, FileText, Landmark, Map, ShieldPlus, Lightbulb, HeartPulse, GraduationCap, Building, FileSignature, Receipt, Sprout, Subscript as Subway, ShieldAlert, Vote, HandCoins, Briefcase, Users, MessageSquare, Smartphone, KeyRound, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BlockchainVerificationOverlay } from '../components/BlockchainVerificationOverlay';
+import { CitizenOTPLogin } from '../../../pages/CitizenOTPLogin';
 
 const activePortals = [
-  { id: 'tax', name: 'Income Tax', description: 'File e-Returns, Link Aadhaar, Check Refund', icon: FileText, url: 'http://localhost:3001', color: 'bg-green-500' },
-  { id: 'passport', name: 'Passport Seva', description: 'Apply, Renew, Track Application', icon: Plane, url: 'http://localhost:3012', color: 'bg-blue-600' },
-  { id: 'parivahan', name: 'Parivahan', description: 'Driving Licence, Vehicle Registration', icon: Car, url: 'http://localhost:3013', color: 'bg-orange-500' },
+  { id: 'tn_gov', name: 'TN Government Portal', description: 'Central gateway, announcements, order tracking', icon: Landmark, url: 'https://www.tn.gov.in', color: 'bg-blue-600' },
+  { id: 'esevai', name: 'TN e-Sevai Portal', description: 'Community, birth, income certificates', icon: FileText, url: 'https://tnesevai.tn.gov.in', color: 'bg-indigo-500' },
+  { id: 'mudhalvarin', name: 'Mudhalvarin Mugavari', description: 'CM office complaints and petitions', icon: MessageSquare, url: 'https://cmhelpline.tnega.org', color: 'bg-rose-500' },
+  { id: 'velaivaaippu', name: 'TN Velaivaaippu Empower', description: 'Government employment exchange', icon: Briefcase, url: 'https://tnvelaivaaippu.gov.in', color: 'bg-emerald-600' },
+  { id: 'private_jobs', name: 'TN Private Jobs', description: 'Private employment listings', icon: Users, url: 'https://www.tnprivatejobs.tn.gov.in', color: 'bg-teal-500' },
+  { id: 'tnsdc', name: 'TN Skill Development', description: 'Skill training programs and courses', icon: GraduationCap, url: 'https://www.tnskill.tn.gov.in', color: 'bg-orange-500' },
+  { id: 'urban_epay', name: 'TN Urban ePay', description: 'Municipal taxes and utility registrations', icon: Receipt, url: 'https://tnurbanepay.tn.gov.in', color: 'bg-violet-500' },
+  { id: 'tnega', name: 'TNeGA Platform', description: 'e-Governance policy details & updates', icon: Building, url: 'https://tnega.tn.gov.in', color: 'bg-cyan-600' },
+  { id: 'district', name: 'TN District Portal', description: 'Directory of district-level administration', icon: Map, url: 'https://districts.tn.gov.in', color: 'bg-slate-600' },
+  { id: 'tax', name: 'Income Tax', description: 'File e-Returns, Link Aadhaar, Check Refund', icon: FileText, url: 'https://www.incometax.gov.in', color: 'bg-green-500' },
+  { id: 'passport', name: 'Passport Seva', description: 'Apply, Renew, Track Application', icon: Plane, url: 'https://www.passportindia.gov.in', color: 'bg-blue-600' },
+  { id: 'parivahan', name: 'Parivahan', description: 'Driving Licence, Vehicle Registration', icon: Car, url: 'https://parivahan.gov.in', color: 'bg-orange-500' },
 ];
 
 const upcomingPortals = [
@@ -25,10 +35,15 @@ const upcomingPortals = [
 
 export function GovServicesHub() {
   const [verifyingPortal, setVerifyingPortal] = useState<{name: string, url: string} | null>(null);
+  
+  // OTP Modal State
+  const [selectedPortal, setSelectedPortal] = useState<{name: string, url: string} | null>(null);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
 
   const handlePortalClick = (portal: {name: string, url: string}, e: React.MouseEvent) => {
     e.preventDefault();
-    setVerifyingPortal(portal);
+    setSelectedPortal(portal);
+    setIsOtpModalOpen(true);
   };
 
   const handleVerificationComplete = () => {
@@ -40,6 +55,45 @@ export function GovServicesHub() {
 
   return (
     <>
+      <AnimatePresence>
+        {isOtpModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative"
+            >
+              <button 
+                onClick={() => setIsOtpModalOpen(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="p-8">
+                <CitizenOTPLogin 
+                  onSuccess={() => {
+                    setIsOtpModalOpen(false);
+                    if (selectedPortal) {
+                      setVerifyingPortal(selectedPortal);
+                    }
+                  }} 
+                />
+              </div>
+              <div className="bg-slate-50 p-4 border-t border-slate-100 text-center text-xs text-slate-500">
+                Secured by TrustOS Identity Verification
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {verifyingPortal && (
           <BlockchainVerificationOverlay 
